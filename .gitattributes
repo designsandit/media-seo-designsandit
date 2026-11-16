@@ -1,0 +1,4 @@
+# Saltos de línea LF en todo el repositorio (los servidores de WordPress son Linux)
+* text=auto eol=lf
+*.mo binary
+*.png binary
