@@ -63,6 +63,8 @@ Porque la descripción solo aparece en la página de adjunto de la imagen, que W
 * El texto alternativo nuevo llega también a las páginas ya publicadas con el editor de bloques o el clásico. Solo cambia el alt de la página si estaba vacío o era igual al anterior.
 * Botón "Probar conexión" para comprobar la clave de la API sin gastar.
 * Uso de la IA por mes en los ajustes: peticiones, tokens y costo estimado.
+* Corregido: Deshacer vuelve exactamente al nombre original, con sus mayúsculas y guiones bajos.
+* Corregido: los nombres de cámara ya limpiados al subir (como img-2034.jpg) se reconocen como genéricos en el lote.
 
 = 1.3.0 =
 * Actualizaciones automáticas desde GitHub.
