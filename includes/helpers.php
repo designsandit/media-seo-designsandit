@@ -27,6 +27,7 @@ function ditms_default_settings() {
 		'replace_refs'     => 1,
 		'update_slug'      => 1,
 		'redirects'        => 1,
+		'sync_alt'         => 1,
 	);
 }
 
@@ -53,6 +54,17 @@ function ditms_api_key() {
 /**
  * Modelos disponibles en el selector.
  */
+/**
+ * Precio de la API por millón de tokens (USD), para estimar el gasto. Fuente: tabla de precios de Anthropic, nov-2026.
+ */
+function ditms_model_prices() {
+	return array(
+		'claude-opus-5-5'   => array( 'in' => 4.00, 'out' => 20.00 ),
+		'claude-sonnet-5-5' => array( 'in' => 2.00, 'out' => 10.00 ),
+		'claude-haiku-5-5'  => array( 'in' => 0.10, 'out' => 0.50 ),
+	);
+}
+
 function ditms_models() {
 	return array(
 		'claude-opus-5-5'   => 'Claude Opus 5.5 (mejor calidad)',
@@ -128,7 +140,8 @@ function ditms_readable_name( $filename ) {
 	$name = pathinfo( $filename, PATHINFO_FILENAME );
 	$name = preg_replace( '/-(scaled|rotated|e\d{10,})$/', '', $name );
 	$name = preg_replace( '/-\d+x\d+$/', '', $name );
-	$name = preg_replace( '/-\d+$/', '', $name );
+	// Sufijo que agrega WordPress a los duplicados (foto-1, foto-2). Solo 1 o 2 dígitos: "img-2034" es parte del nombre.
+	$name = preg_replace( '/-\d{1,2}$/', '', $name );
 	$name = str_replace( array( '-', '_', '.' ), ' ', $name );
 	return trim( preg_replace( '/\s+/', ' ', $name ) );
 }

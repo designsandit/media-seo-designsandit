@@ -122,7 +122,7 @@
 				fillFields( box, values );
 				refreshModel( id );
 				setUndo( box, d.undo );
-				status( box, d.saved && d.saved.length ? 'Textos guardados. Revisa el nombre propuesto y pulsa Renombrar.' : 'Sin cambios en los textos. Revisa el nombre propuesto.', 'ok' );
+				status( box, ( d.saved && d.saved.length ? 'Textos guardados' + pagesNote( d.pages ) + '. Revisa el nombre propuesto y pulsa Renombrar.' : 'Sin cambios en los textos. Revisa el nombre propuesto.' ), 'ok' );
 			} );
 		},
 
@@ -150,7 +150,7 @@
 				}
 				setCurrent( box, d.current );
 				setUndo( box, d.undo );
-				status( box, 'Cambio deshecho.', 'ok' );
+				status( box, 'Cambio deshecho' + pagesNote( d.pages ) + '.', 'ok' );
 				if ( d.url ) {
 					afterFileChange( id, d, box );
 				} else {
@@ -234,6 +234,43 @@
 			}
 		}
 	} );
+
+	function pagesNote( pages ) {
+		return pages ? ' · alt actualizado en ' + pages + ' página(s) publicada(s)' : '';
+	}
+
+	/* ---------------- Ajustes: probar conexión ---------------- */
+
+	function initTest() {
+		var btn = document.getElementById( 'ditms-test' );
+		if ( ! btn ) {
+			return;
+		}
+		var out = document.querySelector( '.ditms-test__result' );
+		btn.addEventListener( 'click', function () {
+			var key = document.getElementById( 'ditms-key' );
+			if ( key && key.value.trim() ) {
+				out.textContent = 'Guarda los cambios primero: la prueba usa la clave guardada.';
+				out.dataset.type = 'error';
+				return;
+			}
+			btn.disabled = true;
+			out.textContent = 'Probando…';
+			out.dataset.type = 'busy';
+			post( 'test', {} )
+				.then( function ( d ) {
+					out.textContent = d.message;
+					out.dataset.type = 'ok';
+				} )
+				.catch( function ( err ) {
+					out.textContent = err.message;
+					out.dataset.type = 'error';
+				} )
+				.then( function () {
+					btn.disabled = false;
+				} );
+		} );
+	}
 
 	/* ---------------- Lote ---------------- */
 
@@ -371,6 +408,7 @@
 	}
 
 	ready( function () {
+		initTest();
 		var page = document.querySelector( '.ditms-bulk' );
 		if ( page ) {
 			initBulk( page );

@@ -23,6 +23,46 @@ class DITMS_AI {
 	/** Modelos que aceptan fallbacks del lado del servidor ante un rechazo. */
 	const FALLBACK_MODELS = array( 'claude-opus-5-5', 'claude-sonnet-5-5' );
 
+	const MODELS_ENDPOINT = 'https://api.anthropic.com/v1/models/';
+
+	/**
+	 * Comprueba la clave y el acceso al modelo configurado consultando la API de modelos (no genera texto ni tiene costo).
+	 *
+	 * @return array|WP_Error Claves: model (nombre visible).
+	 */
+	public static function test_connection() {
+		$key = ditms_api_key();
+		if ( ! $key ) {
+			return new WP_Error( 'ditms_no_key', 'No hay clave guardada. Escríbela, guarda los cambios y prueba de nuevo.' );
+		}
+		$model = (string) ditms_setting( 'model' );
+		if ( ! array_key_exists( $model, ditms_models() ) ) {
+			$model = 'claude-opus-5-5';
+		}
+
+		$response = wp_remote_get( self::MODELS_ENDPOINT . rawurlencode( $model ), array(
+			'timeout' => 20,
+			'headers' => array(
+				'x-api-key'         => $key,
+				'anthropic-version' => '2023-06-01',
+			),
+		) );
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error( 'ditms_http', 'No hubo conexión con la API: ' . $response->get_error_message() );
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( 200 !== $code ) {
+			if ( 404 === $code ) {
+				return new WP_Error( 'ditms_model', 'La clave funciona, pero no tiene acceso al modelo ' . $model . '. Elige otro modelo.' );
+			}
+			return new WP_Error( self::error_code( $code ), self::error_message( $code, $data ) );
+		}
+
+		return array( 'model' => isset( $data['display_name'] ) ? (string) $data['display_name'] : $model );
+	}
+
 	/**
 	 * @param int    $id   ID del adjunto.
 	 * @param string $hint Nombre o palabras clave que escribió el usuario (opcional; si no, se usa el nombre del archivo).
@@ -107,6 +147,9 @@ class DITMS_AI {
 		if ( 200 !== $code ) {
 			return new WP_Error( self::error_code( $code ), self::error_message( $code, $data ) );
 		}
+
+		// Se cobra aunque la respuesta no sirva (rechazo o texto incompleto), así que se registra antes de validarla.
+		DITMS_Usage::record( isset( $data['model'] ) ? (string) $data['model'] : $model, $data['usage'] ?? null );
 
 		if ( isset( $data['stop_reason'] ) && 'refusal' === $data['stop_reason'] ) {
 			return new WP_Error( 'ditms_refusal', 'El modelo no quiso describir esta imagen. Escribe los textos a mano.' );

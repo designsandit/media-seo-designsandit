@@ -23,7 +23,8 @@ class DITMS_Renamer {
 	 * @return array|WP_Error
 	 */
 	public static function rename( $id, $new_name, array $args = array() ) {
-		$args = wp_parse_args( $args, array( 'log' => true, 'group' => null ) );
+		// exact: usar el nombre tal cual (solo para Deshacer, que vuelve al nombre original con mayúsculas o guiones bajos).
+		$args = wp_parse_args( $args, array( 'log' => true, 'group' => null, 'exact' => false ) );
 		$id   = (int) $id;
 		$post = get_post( $id );
 		if ( ! $post || 'attachment' !== $post->post_type ) {
@@ -63,7 +64,16 @@ class DITMS_Renamer {
 		}
 
 		$ext  = strtolower( pathinfo( $source, PATHINFO_EXTENSION ) );
-		$base = ditms_clean_basename( $new_name, $ext );
+		if ( $args['exact'] ) {
+			// sanitize_file_name quita rutas y caracteres peligrosos, pero conserva mayúsculas y guiones bajos.
+			$base     = sanitize_file_name( pathinfo( $new_name, PATHINFO_FILENAME ) );
+			$orig_ext = pathinfo( $new_name, PATHINFO_EXTENSION );
+			if ( '' !== $orig_ext && strtolower( $orig_ext ) === $ext ) {
+				$ext = $orig_ext;
+			}
+		} else {
+			$base = ditms_clean_basename( $new_name, $ext );
+		}
 		if ( '' === $base ) {
 			return new WP_Error( 'ditms_empty', 'El nombre nuevo queda vacío después de limpiarlo. Usa letras o números.' );
 		}
@@ -112,7 +122,7 @@ class DITMS_Renamer {
 		$settings = ditms_settings();
 		$fields   = array( 'guid' => $new_urls['full'] );
 		if ( ! empty( $settings['update_slug'] ) ) {
-			$fields['post_name'] = wp_unique_post_slug( $base, $id, $post->post_status, 'attachment', $post->post_parent );
+			$fields['post_name'] = wp_unique_post_slug( sanitize_title( $base ), $id, $post->post_status, 'attachment', $post->post_parent );
 		}
 		$wpdb->update( $wpdb->posts, $fields, array( 'ID' => $id ) );
 		clean_post_cache( $id );

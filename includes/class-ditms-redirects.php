@@ -79,12 +79,12 @@ class DITMS_Redirects {
 			$via   = 'history';
 		}
 
-		// Diagnóstico sin datos sensibles: indica si el plugin revisó la petición y cómo la resolvió.
-		if ( ! headers_sent() ) {
-			header( 'X-Media-SEO: ' . ( $found ? $via : 'miss' ) );
-		}
 		if ( ! $found ) {
 			return;
+		}
+		// Diagnóstico: cómo se resolvió la redirección (lista o historial). Solo en redirecciones, no en cada 404.
+		if ( ! headers_sent() ) {
+			header( 'X-Media-SEO: ' . $via );
 		}
 
 		$target = self::target_url( $found[0], $found[1] );

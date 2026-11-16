@@ -95,7 +95,7 @@ class DITMS_History {
 			if ( isset( $entry['type'] ) && 'texts' === $entry['type'] ) {
 				$result['texts'] = array_merge( $result['texts'], self::restore_texts( $id, (array) $entry['before'] ) );
 			} else {
-				$renamed = DITMS_Renamer::rename( $id, pathinfo( $entry['from'], PATHINFO_FILENAME ), array( 'log' => false ) );
+				$renamed = DITMS_Renamer::rename( $id, $entry['from'], array( 'log' => false, 'exact' => true ) );
 				// Si ya tiene ese nombre no hay nada que revertir: se descarta la entrada igual.
 				if ( is_wp_error( $renamed ) && 'ditms_same' !== $renamed->get_error_code() ) {
 					update_post_meta( $id, self::META, $history );

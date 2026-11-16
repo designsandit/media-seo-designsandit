@@ -20,7 +20,7 @@ class DITMS_Admin {
 		// La ventana de medios también se abre en Elementor, en BeBuilder (BeTheme) y en la ficha de productos de WooCommerce.
 		add_action( 'wp_enqueue_media', array( __CLASS__, 'enqueue' ) );
 
-		foreach ( array( 'generate', 'rename', 'undo', 'process', 'list' ) as $action ) {
+		foreach ( array( 'generate', 'rename', 'undo', 'process', 'list', 'test' ) as $action ) {
 			add_action( 'wp_ajax_ditms_' . $action, array( __CLASS__, 'ajax_' . $action ) );
 		}
 
@@ -85,7 +85,7 @@ class DITMS_Admin {
 
 		$out['fields'] = isset( $input['fields'] ) ? array_values( array_intersect( (array) $input['fields'], array( 'alt', 'title', 'caption', 'description' ) ) ) : array();
 
-		foreach ( array( 'use_image', 'overwrite', 'auto_on_upload', 'normalize_upload', 'replace_refs', 'update_slug', 'redirects' ) as $k ) {
+		foreach ( array( 'use_image', 'overwrite', 'auto_on_upload', 'normalize_upload', 'replace_refs', 'update_slug', 'redirects', 'sync_alt' ) as $k ) {
 			$out[ $k ] = empty( $input[ $k ] ) ? 0 : 1;
 		}
 		return $out;
@@ -133,6 +133,10 @@ class DITMS_Admin {
 								<label class="ditms-inline"><input type="checkbox" name="<?php echo esc_attr( $n ); ?>[api_key_delete]" value="1"> Borrar la clave guardada</label>
 							<?php endif; ?>
 						<?php endif; ?>
+						<div class="ditms-test">
+							<button type="button" class="ditms__btn" id="ditms-test">Probar conexión</button>
+							<span class="ditms-test__result" aria-live="polite"></span>
+						</div>
 					</div>
 					<div class="ditms-grid">
 						<div class="ditms-field">
@@ -212,6 +216,7 @@ class DITMS_Admin {
 						</div>
 					</div>
 					<?php
+					self::toggle( 'sync_alt', 'Llevar el texto alternativo a las páginas publicadas', 'Para imágenes insertadas con el editor de bloques o el clásico. Solo cambia el alt de la página si está vacío o es igual al anterior; uno escrito a mano se respeta. Elementor y BeTheme no lo necesitan.' );
 					self::toggle( 'overwrite', 'Sobrescribir textos existentes en lote y automático', 'Apagado, solo llena campos vacíos. El título por defecto (el nombre del archivo) cuenta como vacío.' );
 					self::toggle( 'normalize_upload', 'Limpiar el nombre al subir', 'Minúsculas, sin tildes, ñ ni espacios.' );
 					self::toggle( 'auto_on_upload', 'Generar textos al subir', 'En segundo plano, unos segundos después de subir la imagen.' );
@@ -226,6 +231,29 @@ class DITMS_Admin {
 					self::toggle( 'update_slug', 'Actualizar el slug del adjunto' );
 					?>
 					<small class="ditms-note">Antes de renombrar en lote en producción, haz una copia de seguridad de la base de datos. Cada cambio se puede deshacer desde la ficha del archivo.</small>
+				</section>
+
+				<section class="ditms-card">
+					<h2>Uso de la IA</h2>
+					<?php $usage = DITMS_Usage::all(); ?>
+					<?php if ( $usage ) : ?>
+						<table class="ditms-usage">
+							<thead><tr><th scope="col">Mes</th><th scope="col">Peticiones</th><th scope="col">Tokens (entrada / salida)</th><th scope="col">Costo estimado</th></tr></thead>
+							<tbody>
+								<?php foreach ( array_slice( $usage, 0, 6, true ) as $month => $row ) : ?>
+									<tr>
+										<td><?php echo esc_html( $month ); ?></td>
+										<td><?php echo esc_html( number_format_i18n( (int) $row['requests'] ) ); ?></td>
+										<td><?php echo esc_html( number_format_i18n( (int) $row['input'] ) . ' / ' . number_format_i18n( (int) $row['output'] ) ); ?></td>
+										<td><?php echo esc_html( 'USD ' . number_format_i18n( (float) $row['cost'], 3 ) ); ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+						<small class="ditms-note">Calculado con las tarifas públicas de Anthropic. La cifra exacta está en console.anthropic.com.</small>
+					<?php else : ?>
+						<small class="ditms-note">Todavía no hay uso registrado. Se cuenta desde la versión 1.4.0.</small>
+					<?php endif; ?>
 				</section>
 
 				<section class="ditms-card">
@@ -364,7 +392,23 @@ class DITMS_Admin {
 		}
 		$data['saved'] = DITMS_AI::save_fields( $id, $data, true );
 		$data['undo']  = DITMS_History::undo_label( $id );
+		$data['pages'] = DITMS_Content::$last_count;
 		wp_send_json_success( $data );
+	}
+
+	/**
+	 * Prueba la clave guardada contra la API (sin costo). Solo administradores.
+	 */
+	public static function ajax_test() {
+		check_ajax_referer( 'ditms', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Sin permiso.' ), 403 );
+		}
+		$result = DITMS_AI::test_connection();
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+		wp_send_json_success( array( 'message' => 'Conexión correcta. Modelo disponible: ' . $result['model'] . '.' ) );
 	}
 
 	public static function ajax_rename() {
@@ -392,7 +436,8 @@ class DITMS_Admin {
 		if ( ! empty( $meta['original_image'] ) ) {
 			$result['current'] = $meta['original_image'];
 		}
-		$result['undo'] = $result['label'];
+		$result['undo']  = $result['label'];
+		$result['pages'] = DITMS_Content::$last_count;
 		wp_send_json_success( $result );
 	}
 
@@ -417,6 +462,9 @@ class DITMS_Admin {
 		$notes = array();
 		if ( $saved ) {
 			$notes[] = 'textos: ' . implode( ', ', $saved );
+		}
+		if ( DITMS_Content::$last_count ) {
+			$notes[] = 'alt actualizado en ' . DITMS_Content::$last_count . ' página(s)';
 		}
 
 		if ( $rename && $data['filename'] ) {

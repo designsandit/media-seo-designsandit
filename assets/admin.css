@@ -119,3 +119,15 @@
 .ditms-credit { margin: 8px 0 24px; color: var(--ditms-muted); font-size: 12px; }
 .ditms-credit a { color: inherit; }
 .ditms-credit a:hover { color: var(--ditms-accent); }
+
+/* Probar conexión */
+.ditms-test { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.ditms-test__result { font-size: 12px; color: var(--ditms-muted); }
+.ditms-test__result[data-type="ok"] { color: var(--ditms-ok); }
+.ditms-test__result[data-type="error"] { color: var(--ditms-error); }
+
+/* Uso de la IA */
+.ditms-usage { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ditms-usage th, .ditms-usage td { padding: 6px 8px; border-bottom: 1px solid var(--ditms-line); text-align: left; }
+.ditms-usage th { color: var(--ditms-muted); font-weight: 500; font-size: 12px; }
+.ditms-usage tr:last-child td { border-bottom: 0; }
