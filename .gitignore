@@ -1,0 +1,7 @@
+# Paquetes generados para los releases
+*.zip
+
+# Credenciales: nunca en el repositorio
+.env
+.env.*
+wp-config.php
