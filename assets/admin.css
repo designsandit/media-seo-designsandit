@@ -131,3 +131,14 @@
 .ditms-usage th, .ditms-usage td { padding: 6px 8px; border-bottom: 1px solid var(--ditms-line); text-align: left; }
 .ditms-usage th { color: var(--ditms-muted); font-weight: 500; font-size: 12px; }
 .ditms-usage tr:last-child td { border-bottom: 0; }
+
+/* Archivos sin uso */
+.ditms-table-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--ditms-line); border-radius: var(--ditms-radius); }
+.ditms-table-wrap:has(tbody:empty) { display: none; }
+.ditms-files td:first-child, .ditms-files th:first-child { width: 28px; }
+.ditms-files td { word-break: break-all; }
+.ditms-files code { font-size: 12px; }
+.ditms__btn--danger { border-color: var(--ditms-error); background: var(--ditms-error); color: #fff; }
+.ditms__btn--danger:hover { background: #9b1c1c; }
+.ditms-q-size:empty { display: none; }
+.ditms-q-size { margin: 0; font-size: 13px; color: var(--ditms-muted); }

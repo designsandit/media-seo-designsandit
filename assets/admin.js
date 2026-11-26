@@ -399,6 +399,195 @@
 		} );
 	}
 
+	/* ---------------- Archivos sin uso ---------------- */
+
+	function formatBytes( n ) {
+		if ( n >= 1048576 ) {
+			return ( n / 1048576 ).toFixed( 1 ) + ' MB';
+		}
+		return Math.max( 1, Math.round( n / 1024 ) ) + ' KB';
+	}
+
+	function initOrphans( page ) {
+		var scanBtn = document.getElementById( 'ditms-orphans-scan' );
+		var status = document.getElementById( 'ditms-orphans-status' );
+		var bar = page.querySelector( '.ditms-progress' );
+		var results = document.getElementById( 'ditms-orphans-results' );
+		var unusedBody = page.querySelector( '#ditms-orphans-unused tbody' );
+		var usedBody = page.querySelector( '#ditms-orphans-used tbody' );
+		var all = document.getElementById( 'ditms-orphans-all' );
+		var moveBtn = document.getElementById( 'ditms-orphans-move' );
+		var moveStatus = document.getElementById( 'ditms-orphans-move-status' );
+		var qCount = document.getElementById( 'ditms-q-count' );
+		var qSize = document.getElementById( 'ditms-q-size' );
+		var restoreBtn = document.getElementById( 'ditms-q-restore' );
+		var purgeBtn = document.getElementById( 'ditms-q-purge' );
+		var purgeConfirm = document.getElementById( 'ditms-q-purge-confirm' );
+		var qStatus = document.getElementById( 'ditms-q-status' );
+
+		function setQuarantine( count, bytes ) {
+			qCount.textContent = count;
+			qSize.dataset.bytes = bytes;
+			qSize.textContent = count ? count + ' archivo(s), ' + formatBytes( bytes ) : '';
+			restoreBtn.disabled = ! count;
+			purgeBtn.disabled = ! count;
+			purgeConfirm.hidden = true;
+		}
+		setQuarantine( parseInt( qCount.textContent, 10 ) || 0, parseInt( qSize.dataset.bytes, 10 ) || 0 );
+
+		function row( body, cells ) {
+			var tr = document.createElement( 'tr' );
+			cells.forEach( function ( c ) {
+				var td = document.createElement( 'td' );
+				if ( c instanceof Node ) {
+					td.appendChild( c );
+				} else {
+					td.textContent = c;
+				}
+				tr.appendChild( td );
+			} );
+			body.appendChild( tr );
+			return tr;
+		}
+
+		function code( text ) {
+			var c = document.createElement( 'code' );
+			c.textContent = text;
+			return c;
+		}
+
+		function counts() {
+			document.getElementById( 'ditms-orphans-unused-count' ).textContent = unusedBody.rows.length;
+			document.getElementById( 'ditms-orphans-used-count' ).textContent = usedBody.rows.length;
+			moveBtn.disabled = ! unusedBody.querySelector( 'input:checked' );
+		}
+
+		scanBtn.addEventListener( 'click', function () {
+			scanBtn.disabled = true;
+			unusedBody.innerHTML = '';
+			usedBody.innerHTML = '';
+			moveStatus.textContent = '';
+			results.hidden = true;
+			status.textContent = 'Buscando carpetas…';
+			post( 'orphans_dirs', {} )
+				.then( function ( d ) {
+					var dirs = d.dirs;
+					var done = 0;
+					var unusedBytes = 0;
+					bar.hidden = false;
+					return dirs.reduce( function ( chain, dir ) {
+						return chain.then( function () {
+							status.textContent = 'Revisando ' + ( dir || 'raíz de uploads' ) + ' (' + ( done + 1 ) + ' de ' + dirs.length + ')';
+							return post( 'orphans_scan', { dir: dir } ).then( function ( r ) {
+								r.unused.forEach( function ( f ) {
+									var cb = document.createElement( 'input' );
+									cb.type = 'checkbox';
+									cb.checked = true;
+									cb.value = f.rel;
+									cb.setAttribute( 'aria-label', 'Seleccionar ' + f.rel );
+									cb.addEventListener( 'change', counts );
+									row( unusedBody, [ cb, code( f.rel ), formatBytes( f.size ) ] );
+									unusedBytes += f.size;
+								} );
+								r.used.forEach( function ( f ) {
+									row( usedBody, [ code( f.rel ), f.where ] );
+								} );
+								done++;
+								bar.firstElementChild.style.width = Math.round( done / dirs.length * 100 ) + '%';
+							} );
+						} );
+					}, Promise.resolve() ).then( function () {
+						results.hidden = false;
+						counts();
+						status.textContent = unusedBody.rows.length
+							? 'Listo: ' + unusedBody.rows.length + ' archivo(s) sin uso (' + formatBytes( unusedBytes ) + ').'
+							: 'Listo: no hay archivos sin uso.';
+					} );
+				} )
+				.catch( function ( err ) {
+					status.textContent = err.message;
+				} )
+				.then( function () {
+					scanBtn.disabled = false;
+				} );
+		} );
+
+		all.addEventListener( 'change', function () {
+			unusedBody.querySelectorAll( 'input[type="checkbox"]' ).forEach( function ( cb ) {
+				cb.checked = all.checked;
+			} );
+			counts();
+		} );
+
+		moveBtn.addEventListener( 'click', function () {
+			var files = Array.prototype.map.call( unusedBody.querySelectorAll( 'input:checked' ), function ( cb ) {
+				return cb.value;
+			} );
+			if ( ! files.length ) {
+				return;
+			}
+			moveBtn.disabled = true;
+			moveStatus.textContent = 'Moviendo ' + files.length + ' archivo(s)…';
+			post( 'orphans_move', { files: JSON.stringify( files ) } )
+				.then( function ( d ) {
+					d.moved.forEach( function ( rel ) {
+						var cb = unusedBody.querySelector( 'input[value="' + CSS.escape( rel ) + '"]' );
+						if ( cb ) {
+							cb.closest( 'tr' ).remove();
+						}
+					} );
+					var skipped = Object.keys( d.skipped || {} );
+					moveStatus.textContent = d.moved.length + ' movido(s) a cuarentena' + ( skipped.length ? ' · ' + skipped.length + ' no se movieron (' + d.skipped[ skipped[ 0 ] ] + ')' : '' ) + '.';
+					var bytes = parseInt( qSize.dataset.bytes, 10 ) || 0;
+					setQuarantine( ( parseInt( qCount.textContent, 10 ) || 0 ) + d.moved.length, bytes );
+					qStatus.textContent = 'Recarga la página para ver el tamaño total de la cuarentena.';
+					counts();
+				} )
+				.catch( function ( err ) {
+					moveStatus.textContent = err.message;
+				} )
+				.then( function () {
+					counts();
+				} );
+		} );
+
+		restoreBtn.addEventListener( 'click', function () {
+			restoreBtn.disabled = true;
+			qStatus.textContent = 'Restaurando…';
+			post( 'orphans_restore', { files: '[]' } )
+				.then( function ( d ) {
+					var skipped = Object.keys( d.skipped || {} ).length;
+					qStatus.textContent = d.restored.length + ' restaurado(s)' + ( skipped ? ' · ' + skipped + ' no se pudieron restaurar' : '' ) + '. Vuelve a analizar para ver el estado actual.';
+					setQuarantine( skipped, skipped ? parseInt( qSize.dataset.bytes, 10 ) || 0 : 0 );
+				} )
+				.catch( function ( err ) {
+					qStatus.textContent = err.message;
+					restoreBtn.disabled = false;
+				} );
+		} );
+
+		// Vaciar pide un segundo clic: el navegador del panel no muestra confirm().
+		purgeBtn.addEventListener( 'click', function () {
+			purgeConfirm.hidden = false;
+			qStatus.textContent = 'Los archivos se borran para siempre y no se pueden recuperar.';
+			purgeConfirm.focus();
+		} );
+		purgeConfirm.addEventListener( 'click', function () {
+			purgeConfirm.disabled = true;
+			post( 'orphans_purge', { confirm: 1 } )
+				.then( function ( d ) {
+					qStatus.textContent = d.deleted + ' archivo(s) borrado(s).';
+					setQuarantine( 0, 0 );
+				} )
+				.catch( function ( err ) {
+					qStatus.textContent = err.message;
+				} )
+				.then( function () {
+					purgeConfirm.disabled = false;
+				} );
+		} );
+	}
+
 	function ready( fn ) {
 		if ( document.readyState !== 'loading' ) {
 			fn();
@@ -409,6 +598,10 @@
 
 	ready( function () {
 		initTest();
+		var orphans = document.querySelector( '.ditms-orphans' );
+		if ( orphans ) {
+			initOrphans( orphans );
+		}
 		var page = document.querySelector( '.ditms-bulk' );
 		if ( page ) {
 			initBulk( page );

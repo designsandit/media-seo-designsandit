@@ -3,7 +3,7 @@
  * Plugin Name:       Media SEO by Designs and IT
  * Plugin URI:        https://github.com/designsandit/media-seo-designsandit
  * Description:       Renombra archivos de la biblioteca de medios de forma segura (borra los archivos viejos, regenera tamaños, actualiza enlaces y deja redirección 301) y genera con IA el texto alternativo, el título y la leyenda orientados a SEO.
- * Version:           1.4.0
+ * Version:           1.5.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Designs and IT
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DITMS_VERSION', '1.4.0' );
+define( 'DITMS_VERSION', '1.5.0' );
 define( 'DITMS_FILE', __FILE__ );
 define( 'DITMS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DITMS_URL', plugin_dir_url( __FILE__ ) );
@@ -32,6 +32,7 @@ require_once DITMS_DIR . 'includes/class-ditms-ai.php';
 require_once DITMS_DIR . 'includes/class-ditms-redirects.php';
 require_once DITMS_DIR . 'includes/class-ditms-content.php';
 require_once DITMS_DIR . 'includes/class-ditms-usage.php';
+require_once DITMS_DIR . 'includes/class-ditms-orphans.php';
 require_once DITMS_DIR . 'includes/class-ditms-admin.php';
 
 // Actualizaciones desde los releases de GitHub: cada sitio ve la versión nueva en Plugins y se actualiza con un clic.
@@ -46,6 +47,7 @@ if ( class_exists( '\YahnisElsts\PluginUpdateChecker\v5\PucFactory' ) ) {
 add_action( 'plugins_loaded', function () {
 	DITMS_Redirects::init();
 	DITMS_Content::init();
+	DITMS_Orphans::init();
 	DITMS_Admin::init();
 } );
 

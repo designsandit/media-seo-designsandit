@@ -290,7 +290,7 @@ class DITMS_Admin {
 
 	public static function admin_assets( $hook ) {
 		$screen = get_current_screen();
-		if ( ( $screen && 'attachment' === $screen->id ) || in_array( $hook, array( 'upload.php', 'media_page_ditms-bulk', 'settings_page_ditms-settings' ), true ) ) {
+		if ( ( $screen && 'attachment' === $screen->id ) || in_array( $hook, array( 'upload.php', 'media_page_ditms-bulk', 'media_page_ditms-orphans', 'settings_page_ditms-settings' ), true ) ) {
 			self::enqueue();
 		}
 	}

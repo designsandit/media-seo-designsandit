@@ -2,9 +2,9 @@
 Contributors: designsandit
 Tags: media, rename, alt text, image seo, ai
 Requires at least: 6.0
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,10 @@ Media SEO resuelve dos tareas de la biblioteca de medios que casi siempre se hac
 * Puede agregar la marca al final de cada título.
 * Lleva el texto alternativo nuevo a las páginas ya publicadas.
 * Procesamiento en lote para imágenes sin texto alternativo o con nombres como IMG_2034.jpg.
+
+**Limpieza**
+
+* Encuentra los archivos que no pertenecen a la biblioteca y que nada del sitio usa, y los mueve a una cuarentena reversible.
 
 La IA es Claude, de Anthropic. Cada sitio usa su propia clave de API y paga solo lo que consume: aproximadamente USD 0,001 a 0,02 por imagen, según el modelo.
 
@@ -58,6 +62,9 @@ Abre la URL vieja de la imagen. Si da error 404, el servidor no está enviando a
 Porque la descripción solo aparece en la página de adjunto de la imagen, que WordPress desactiva desde la versión 6.4. Se puede activar en los ajustes.
 
 == Changelog ==
+
+= 1.5.0 =
+* Nueva pantalla Medios > Archivos sin uso: encuentra los archivos de uploads que no pertenecen a ninguna imagen de la biblioteca (como las copias que dejaba Rename Media Files), comprueba que nada del sitio los use y los mueve a una cuarentena de donde se pueden restaurar.
 
 = 1.4.0 =
 * El texto alternativo nuevo llega también a las páginas ya publicadas con el editor de bloques o el clásico. Solo cambia el alt de la página si estaba vacío o era igual al anterior.
