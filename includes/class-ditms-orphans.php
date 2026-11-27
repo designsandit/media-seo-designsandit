@@ -194,6 +194,42 @@ class DITMS_Orphans {
 		return self::$haystack;
 	}
 
+	/** Texto de los archivos del tema activo y su tema padre (CSS, JS, PHP, plantillas). Una vez por petición. */
+	private static $theme_hay = null;
+
+	/** Límites para no cargar temas enormes en memoria. */
+	const THEME_FILE_MAX  = 2097152;  // 2 MB por archivo
+	const THEME_TOTAL_MAX = 33554432; // 32 MB en total
+
+	private static function theme_haystack() {
+		if ( null !== self::$theme_hay ) {
+			return self::$theme_hay;
+		}
+		$parts = array();
+		$total = 0;
+		$dirs  = array_unique( array( get_stylesheet_directory(), get_template_directory() ) );
+		foreach ( $dirs as $dir ) {
+			if ( ! $dir || ! is_dir( $dir ) ) {
+				continue;
+			}
+			$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ) );
+			foreach ( $files as $file ) {
+				$ext = strtolower( $file->getExtension() );
+				if ( ! in_array( $ext, array( 'css', 'scss', 'js', 'php', 'html', 'json', 'twig' ), true ) ) {
+					continue;
+				}
+				$size = (int) $file->getSize();
+				if ( $size > self::THEME_FILE_MAX || $total + $size > self::THEME_TOTAL_MAX ) {
+					continue;
+				}
+				$total  += $size;
+				$parts[] = (string) file_get_contents( $file->getPathname() ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			}
+		}
+		self::$theme_hay = implode( "\n", $parts );
+		return self::$theme_hay;
+	}
+
 	private static function flatten( $value ) {
 		if ( is_string( $value ) ) {
 			$decoded = ditms_maybe_base64_serialized( $value );
@@ -241,6 +277,7 @@ class DITMS_Orphans {
 			$plain, $json
 		) ) );
 		$out['constructor o CSS'] = self::haystack();
+		$out['archivos del tema'] = self::theme_haystack();
 		return $out;
 	}
 
@@ -286,6 +323,10 @@ class DITMS_Orphans {
 		$hay = self::haystack();
 		if ( '' !== $hay && ( false !== strpos( $hay, $needles[0] ) || false !== strpos( $hay, $needles[1] ) ) ) {
 			return 'constructor o CSS';
+		}
+		$theme = self::theme_haystack();
+		if ( '' !== $theme && ( false !== strpos( $theme, $needles[0] ) || false !== strpos( $theme, $needles[1] ) ) ) {
+			return 'archivos del tema';
 		}
 		return '';
 	}
@@ -525,7 +566,7 @@ class DITMS_Orphans {
 
 			<section class="ditms-card" id="ditms-orphans-results" hidden>
 				<h2>Sin uso <span class="ditms-count" id="ditms-orphans-unused-count">0</span></h2>
-				<small class="ditms-note">No pertenecen a la biblioteca y no aparecen en páginas, campos personalizados, opciones, widgets, categorías, constructores ni CSS. Antes de mover cada uno se vuelve a comprobar.</small>
+				<small class="ditms-note">No pertenecen a la biblioteca y no aparecen en páginas, campos personalizados, opciones, widgets, categorías, constructores, CSS ni archivos del tema. Antes de mover cada uno se vuelve a comprobar.</small>
 				<div class="ditms-table-wrap"><table class="ditms-usage ditms-files" id="ditms-orphans-unused"><thead><tr><th scope="col"><input type="checkbox" id="ditms-orphans-all" checked aria-label="Seleccionar todos"></th><th scope="col">Archivo</th><th scope="col">Tamaño</th></tr></thead><tbody></tbody></table></div>
 				<div class="ditms-run">
 					<button type="button" class="ditms__btn ditms__btn--primary" id="ditms-orphans-move">Mover a cuarentena</button>

@@ -4,7 +4,7 @@ Tags: media, rename, alt text, image seo, ai
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ Abre la URL vieja de la imagen. Si da error 404, el servidor no está enviando a
 Porque la descripción solo aparece en la página de adjunto de la imagen, que WordPress desactiva desde la versión 6.4. Se puede activar en los ajustes.
 
 == Changelog ==
+
+= 1.5.1 =
+* Archivos sin uso también revisa los archivos del tema activo y de su tema padre (CSS, JS y plantillas), para no marcar como sin uso una imagen que el tema usa por URL.
 
 = 1.5.0 =
 * Nueva pantalla Medios > Archivos sin uso: encuentra los archivos de uploads que no pertenecen a ninguna imagen de la biblioteca (como las copias que dejaba Rename Media Files), comprueba que nada del sitio los use y los mueve a una cuarentena de donde se pueden restaurar.
